@@ -1,0 +1,6 @@
+bin/**
+obj/**
+encryptionStream.txt
+decryptionStream.txt
+public.asc
+private.asc
