@@ -1,6 +1,4 @@
-﻿// Generate keys...
-
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using PgpCore;
 
 var process = Process.GetCurrentProcess();
@@ -15,16 +13,19 @@ void ReportMemoryUsage()
     lastMemoryUsage = process.PrivateMemorySize64;
 }
 
-
+// Generate keys...
 Console.WriteLine("Generating keys...");
 
 var publicKeyFileName = "public.asc";
 var privateKeyFileName = "private.asc";
-var numberOfRandomLines = 10000000;
+var password = "password";
+var encrypteFileName = "encryptionStream.txt";
+var decryptedFileName = "decryptionStream.txt";
+var numberOfRandomLines = 1000000;
 
 using (var pgpGenerate = new PGP())
 {
-    pgpGenerate.GenerateKey(new FileInfo(publicKeyFileName), new FileInfo(privateKeyFileName), "brian.mouton@fisglobal.com", "password");
+    pgpGenerate.GenerateKey(new FileInfo(publicKeyFileName), new FileInfo(privateKeyFileName), "brian.mouton@fisglobal.com", password);
 }
 
 ReportMemoryUsage();
@@ -37,25 +38,29 @@ EncryptionKeys keys;
 using (var publicKeyStream = new FileStream(publicKeyFileName, FileMode.Open))
     keys = new EncryptionKeys(publicKeyStream);
 
+// using (var storageStream = new FileStream(encrypteFileName, FileMode.Create)) // Imagine this is an output or custom stream to write to an S3 bucket.
+// {
+//     using (var pgpEncrypt = new PGP(keys))
+//     {
+//         pgpEncrypt.EncryptStream(new RandomDataStream(numberOfRandomLines), storageStream);
+//     }
 
-var randomDataStream = new RandomDataStream(numberOfRandomLines);
-using (var storageStream = new FileStream("encryptionStream.txt", FileMode.Create)) // Imagine this is an output or custom stream to write to an S3 bucket.
+//     ReportMemoryUsage();
+// }
+
+using (var storageStream = new FileStream(encrypteFileName, FileMode.Create)) // Imagine this is an output or custom stream to write to an S3 bucket.
 {
-    using (var pgpEncrypt = new PGP(keys))
-    {
-        pgpEncrypt.EncryptStream(randomDataStream, storageStream);
-    }
-
+    await EncryptionUtil.EncryptAsync(keys, new GuidStream(numberOfRandomLines), storageStream, 4096);
     ReportMemoryUsage();
 }
 
 // Decryption in chunks...
 Console.WriteLine("Decrypting data...");
 
-using (var storageStream = new FileStream("encryptionStream.txt", FileMode.Open))
-using (var decryptionStream = new FileStream("decryptionStream.txt", FileMode.Create))
+using (var storageStream = new FileStream(encrypteFileName, FileMode.Open))
+using (var decryptionStream = new FileStream(decryptedFileName, FileMode.Create))
 using (var privateKeyStream = new FileStream(privateKeyFileName, FileMode.Open))
-using (var pgpDecrypt = new PGP(new EncryptionKeys(privateKeyStream, "password")))
+using (var pgpDecrypt = new PGP(new EncryptionKeys(privateKeyStream, password)))
 {
     int linesProcessed = 0;
     pgpDecrypt.DecryptStream(storageStream, new LineInterceptor(line =>
