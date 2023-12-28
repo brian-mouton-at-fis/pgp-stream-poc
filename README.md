@@ -1,5 +1,10 @@
 The purpose of this proof of concept (PoC) is to find a way to encrypt and decrypt files in chunks allowing the processing of VERY large files without running out of memory.
 
+For encryption `VirtualLineStream` offers up a simplified way of providing lines for encryption.
+EncryptionUtils includes a helper method for encrypting an input stream (like `VirtualLineStream`) to any output stream.
+
+For decryption this PoC uses the `LineInterceptor` class to intercept decrypted lines of text and provide an oppurtunity to process them.
+
 Encrypting a file with 1 million guid's (~37 MB) using PgpCore yields the following results:
 
 ```
@@ -66,3 +71,5 @@ As you can see there isn't much a of difference in size. In fact processing in c
 I have attempted to increase the buffer sizes used in BouncyCastle and it has resulted in more memory use.
 
 Armored output makes the encrypted files more easily readable, however, they do take up more space.
+
+Critical files to look at are [VirtualLineStream.cs](VirtualLineStream.cs), [EncryptionUtil.cs](EncryptionUtil.cs), and [LineInterceptor.cs](LineInterceptor.cs).
