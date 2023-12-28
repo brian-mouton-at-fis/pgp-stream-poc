@@ -1,5 +1,5 @@
 
-public class GuidStream : VirtualLineStream
+public class GuidStream : LineStream
 {
     private Queue<string?> guidQueue = new();
     private long numberOfLines;

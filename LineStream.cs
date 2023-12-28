@@ -1,10 +1,18 @@
 
-public abstract class VirtualLineStream : Stream
+public class LineStream : Stream
 {
     private int positionInLine;
     private byte[]? currentLineBytes;
 
-    protected abstract Task<string?> GetNextLineAsync();
+    private Func<Task<string?>>? getNextLineAsyncFunc;
+
+    protected virtual async Task<string?> GetNextLineAsync() 
+    { 
+        if(getNextLineAsyncFunc == null) 
+            throw new NotImplementedException();
+
+        return await getNextLineAsyncFunc();
+    }
 
     private async Task<byte[]?> TryGetNextLineInBytes()
     {
@@ -14,6 +22,11 @@ public abstract class VirtualLineStream : Stream
             return null;
         else
             return System.Text.Encoding.UTF8.GetBytes(line + "\n");
+    }
+
+    public LineStream(Func<Task<string?>>? getNextLineAsyncFunc = null)
+    {
+        this.getNextLineAsyncFunc = getNextLineAsyncFunc;
     }
 
     public override bool CanRead => true;
