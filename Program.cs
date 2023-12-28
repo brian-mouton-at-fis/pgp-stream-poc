@@ -1,10 +1,20 @@
 ﻿using System.Diagnostics;
 using PgpCore;
 
+// All settings for process
+var publicKeyFileName = "public.asc";
+var privateKeyFileName = "private.asc";
+var password = "password";
+var encrypteFileName = "encryptionStream.txt";
+var decryptedFileName = "decryptionStream.txt";
+var numberOfRandomLines = 1000000; // Configure this to play with size of files.
+var usePgpCore = false; // Configure this to switch between methods.
+
 var process = Process.GetCurrentProcess();
 long lastMemoryUsage = process.PrivateMemorySize64;
 Console.WriteLine($"Starting memory: {(double)process.PrivateMemorySize64 / 1024 / 1024} MB");
 
+// Reports memory usage of current process.
 void ReportMemoryUsage()
 {
     process.Refresh();
@@ -15,13 +25,6 @@ void ReportMemoryUsage()
 
 // Generate keys...
 Console.WriteLine("Generating keys...");
-
-var publicKeyFileName = "public.asc";
-var privateKeyFileName = "private.asc";
-var password = "password";
-var encrypteFileName = "encryptionStream.txt";
-var decryptedFileName = "decryptionStream.txt";
-var numberOfRandomLines = 1000000;
 
 using (var pgpGenerate = new PGP())
 {
@@ -38,20 +41,27 @@ EncryptionKeys keys;
 using (var publicKeyStream = new FileStream(publicKeyFileName, FileMode.Open))
     keys = new EncryptionKeys(publicKeyStream);
 
-// using (var storageStream = new FileStream(encrypteFileName, FileMode.Create)) // Imagine this is an output or custom stream to write to an S3 bucket.
-// {
-//     using (var pgpEncrypt = new PGP(keys))
-//     {
-//         pgpEncrypt.EncryptStream(new RandomDataStream(numberOfRandomLines), storageStream);
-//     }
-
-//     ReportMemoryUsage();
-// }
-
-using (var storageStream = new FileStream(encrypteFileName, FileMode.Create)) // Imagine this is an output or custom stream to write to an S3 bucket.
+// Encryption using PgpCore. Due to reliance on the length of the stream cannot be used to encrypt in chunks.
+if (usePgpCore)
 {
-    await EncryptionUtil.EncryptAsync(keys, new GuidStream(numberOfRandomLines), storageStream, 4096);
-    ReportMemoryUsage();
+    using (var storageStream = new FileStream(encrypteFileName, FileMode.Create)) // Imagine this is an output or custom stream to write to an S3 bucket.
+    {
+        using (var pgpEncrypt = new PGP(keys))
+        {
+            pgpEncrypt.EncryptStream(new GuidStream(numberOfRandomLines), storageStream);
+        }
+
+        ReportMemoryUsage();
+    }
+}
+else
+// Uses BouncyCastle directly using code copied from PgpCore to encrypt file in chunks.
+{
+    using (var storageStream = new FileStream(encrypteFileName, FileMode.Create)) // Imagine this is an output or custom stream to write to an S3 bucket.
+    {
+        await EncryptionUtil.EncryptAsync(keys, new GuidStream(numberOfRandomLines), storageStream, 4096);
+        ReportMemoryUsage();
+    }
 }
 
 // Decryption in chunks...

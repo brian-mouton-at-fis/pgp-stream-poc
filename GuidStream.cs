@@ -4,6 +4,9 @@ public class GuidStream : VirtualLineStream
     private Queue<string?> guidQueue = new();
     private long numberOfLines;
 
+    // Required for PgpCore only.
+    public override long Length => numberOfLines * Guid.NewGuid().ToString().Length + 1;
+
     public GuidStream(long numberOfLines)
     {
         this.numberOfLines = numberOfLines;

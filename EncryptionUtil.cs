@@ -23,10 +23,12 @@ public static class EncryptionUtil
             pk.AddMethod(publicKey);
         }
 
-        using (var @out = pk.Open(outputStream, new byte[bufferSize]))
+        using var armoredStream = new ArmoredOutputStream(outputStream); // Friendlier file output.
+
+        using (var @out = pk.Open(armoredStream, new byte[bufferSize]))
         {
             var lData = new PgpLiteralDataGenerator(false);
-            using (var pOut = lData.Open(@out, PgpLiteralData.Utf8, PgpLiteralData.Console, DateTime.Now, new byte[bufferSize]))
+            using (var pOut = lData.Open(@out, PgpLiteralData.Binary, PgpLiteralData.Console, DateTime.Now, new byte[bufferSize]))
             {
                 await inputStream.CopyToAsync(pOut);
             }
